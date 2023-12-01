@@ -1,32 +1,27 @@
-from fastapi import FastAPI, Depends, HTTPException
+# main.py
+from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine, Iot
+import database
 
 app = FastAPI()
 
-# Configuración para crear y cerrar la sesión de la base de datos
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@app.on_event("startup")
+async def startup_db_client():
+    await database.database.connect()
 
-# Endpoint para obtener el valor de un dispositivo
-@app.get("/{id}", response_model=dict)
-def read_item(id: int, db: Session = Depends(get_db)):
-    device = db.query(Iot).filter(Iot.id == id).first()
-    if device is None:
-        raise HTTPException(status_code=404, detail="Device not found")
-    return {"id": device.id, "dispositivo": device.dispositivo, "valor": device.valor}
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    await database.database.disconnect()
 
-# Endpoint para actualizar el valor de un dispositivo
-@app.patch("/{id}/{value}", response_model=dict)
-def update_item(id: int, value: int, db: Session = Depends(get_db)):
-    device = db.query(Iot).filter(Iot.id == id).first()
-    if device is None:
-        raise HTTPException(status_code=404, detail="Device not found")
+@app.post("/create")
+async def create_item(dispositivo: str, valor: int, db: Session = Depends(database.get_db)):
+    return database.create_iot(db, dispositivo, valor)
 
-    device.valor = value
-    db.commit()
-    return {"valor": device.valor}
+@app.get("/read/{id}")
+async def read_item(id: int, db: Session = Depends(database.get_db)):
+    return database.read_iot(db, id)
+
+@app.patch("/update/{id}/{valor}")
+async def update_item(id: int, valor: int, db: Session = Depends(database.get_db)):
+    return database.update_iot(db, id, valor)
+

@@ -1,18 +1,17 @@
+# database.py
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from databases import Database
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./iot.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+DATABASE_URL = "sqlite:///./test.db"
+database = Database(DATABASE_URL)
+metadata = declarative_base()
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-class Iot(Base):
+class IoT(metadata):
     __tablename__ = "iot"
-
     id = Column(Integer, primary_key=True, index=True)
     dispositivo = Column(String, index=True)
     valor = Column(Integer)
 
-Base.metadata.create_all(bind=engine)
+engine = create_engine(DATABASE_URL)
+metadata.create_all(bind=engine)
